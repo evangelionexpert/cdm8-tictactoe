@@ -1,9 +1,9 @@
 		asect	0xf3
 IOReg:	# Gives the address 0xf3 the symbolic name IOReg
-		asect	0xf0
-stack:	# Gives the address 0xf0 the symbolic name stack
+		asect	0xe0
+stack:	# Gives the address 0xe0 the symbolic name stack
 
-		asect 	0x20
+		asect 	0x00
 table:  dc 0,1,2     # Horizontal lines
 		dc 4,5,6
 		dc 8,9,10
@@ -15,8 +15,8 @@ table:  dc 0,1,2     # Horizontal lines
 
 # Symbols:
 space:  dc 0
-nought: dc 1
-cross:  dc 2
+cross:  dc 1
+nought: dc 2
 
 # Game states:
 game: dc 0b00000000
@@ -24,8 +24,9 @@ win:  dc 0b01000000
 lose: dc 0b10000000
 draw: dc 0b11000000
 
-crossWins:  dc 0b00101010
-noughtWins: dc 0b00010101
+
+noughtWins: dc 0b00101010
+crossWins:  dc 0b00010101
 
 
 init:	
@@ -33,13 +34,10 @@ init:
 	stsp r0
 	
 main:
-	ldi r0, IOReg       # r0 is a register for IO Address
-	
 	do
-		jsr readIO      # IO data -> r3
-		jsr getCellAddr # cellAddr -> r3
+		jsr readIO      # cellAddr -> r3
+		ld	r3, r1      # cellData -> r1
 		
-		ld	r1, r3      # cellData -> r1
 		if 	       
 			tst r1
 		is	nz          # If cell is not empty
@@ -59,7 +57,7 @@ main:
 		fi
 		
 
-		# jsr robotPlays  # Find suitable cell for a nought 
+		#jsr robotPlays  # Find suitable cell for a nought 
 						# And check if robot wins.
 						# not implemented yet.
 		
@@ -71,44 +69,33 @@ main:
 		
 		
 		 
-		 	
-		tst	r1
-	until z
+		tst	r2
+	until nz
 	
 	halt
 
 	
  
 readIO:
+	ldi r0, IOReg
 	do
 		ld	r0, r3     # Wait for button press
 		tst	r3
 	until nz
 	
-	# IO data is stored in r3
+	# Cell addr is stored in r3
 	rts	
-	
-	
-getCellAddr:
-	# Get cell coordinates for the button
-	# Cell address is stored in bits 2-5 of IO data (r3)
 
-	ldi  r3, 0b00111100
-	and  r2, r3
-
-	shr  r3
-	shr  r3
-
-	# Result is stored in r3
-	rts
 
 
 getGameState:
-	stsp r0
-	stsp r1
-	stsp r3
+	push r0
+	push r1
+	push r3
 
 	ldi r0, table
+	ldc r0, r0
+	
 	ldi r3, 8
 
 	while 
@@ -122,7 +109,7 @@ getGameState:
 		shl r1
 		shl r1
 
-		or  r1, r2   # Bits 4-5 of r2 is the 1st cell
+		or  r1, r2   # Bits 4-5 of r2 is the 1st cell's symbol ID
 
 		inc r0
 		ld  r1, r0
@@ -130,12 +117,12 @@ getGameState:
 		shl  r1
 		shl  r1
 
-		or  r1, r2   # Bits 2-3 of r2 is the 2nd cell
+		or  r1, r2   # Bits 2-3 of r2 is the 2nd cell's symbol ID
 
 		inc r0
 		ld  r1, r0
 
-		or  r1, r2   # Bits 0-1 of r2 is the 3rd cell
+		or  r1, r2   # Bits 0-1 of r2 is the 3rd cell's symbol ID
 
 		inc r0
 
@@ -146,33 +133,39 @@ getGameState:
 
 		if
 			ldi r1, crossWins
+			ldc r1, r1
 			cmp r1, r2
 		is eq
 			ldi r2, win
+			ldc r2, r2
 			break
 		else
 			if
 				ldi r1, noughtWins
+				ldc r1, r1
 				cmp r1, r2
 			is eq
 				ldi r2, lose
+				ldc r2, r2
 				break
 			else
 				ldi r2, game
+				ldc r2, r2
 			fi
 		fi
 	wend
 
-	ldsp r3
-	ldsp r1
-	ldsp r0
+	pop r3
+	pop r1
+	pop r0
 
 	rts
 	# Game state is stored in r2
 	
 	
 changeIO:
-	# cellAddr is stored in r3
+	# cellAddr should be stored in bits 2-5 of IO data
+	# Ours is in r3
 	
 	# Game state is stored in bits 6-7 of IO data
 	# Ours is in r2
@@ -188,19 +181,19 @@ changeIO:
 
 	# Now r3 contains updated IO data
 	st   r0, r3
-	
 	rts
 	
 
 humanPlays:
 	# cellAddr is stored in r3
 
-	ldi  r1, cross  
+	ldi  r1, cross
+	ldc  r1, r1
+	  
 	st   r3, r1        # cellData := symbol
 
-	jsr  getGameState  # r2 := gameState
+	#jsr  getGameState  # r2 := gameState
 	jsr  changeIO
 
 	rts
-
 end
