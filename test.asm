@@ -1,15 +1,18 @@
 asect 0x00
 
-ldi r0, 0b00000001
+ldi r0, 0b10000001
 jsr changePole
-ldi r0, 0b00000010
+ldi r0, 0b11000010
+jsr changePole
+ldi r0, 0b01000000
 jsr changePole
 ldi r0, 0b00000000
-jsr changePole
+ldi r1, 0xf3
+st r1, r0
 halt
 
 changePole:
-	ldi r1, 0b00000011
+	ldi r1, 0b11000011
 	and r1, r0
 	while
 		ldi r1, 0b00001100
