@@ -1,6 +1,6 @@
 		asect	0xf3
 IOReg:	# Gives the address 0xf3 the symbolic name IOReg
-		asect	0xe0
+		asect	0xf0
 stack:	# Gives the address 0xe0 the symbolic name stack
 
 		asect 	0x00
@@ -25,10 +25,6 @@ lose: dc 0b10000000
 draw: dc 0b11000000
 
 
-noughtWins: dc 0b00101010
-crossWins:  dc 0b00010101
-
-
 init:	
 	ldi	 r0, stack
 	stsp r0
@@ -44,6 +40,7 @@ main:
 			continue 
 		fi              # ... then do nothing
 		
+		
 		jsr humanPlays  # Put a cross 
 						# and check if human wins.
 						#
@@ -53,14 +50,13 @@ main:
 		if
 			tst r2      # If state is win, lose or draw
 		is  nz
-			break		# We finish the game
+			break		# We may finish the game
 		fi
 		
 
-		#jsr robotPlays  # Find suitable cell for a nought 
+		jsr robotPlays  # Find suitable cell for a nought 
 						# And check if robot wins.
 						# not implemented yet.
-		
 		
 		
 		
@@ -83,84 +79,81 @@ readIO:
 		tst	r3
 	until nz
 	
+	ldi r0, 0b00001111
+	and r0, r3
 	# Cell addr is stored in r3
 	rts	
 
 
 
 getGameState:
-	push r0
+	# Win, if there are three crosses in a row
+	# Lose, if there are three noughts in a row
+	# Draw, when all the cells are busy
+	# ...and two previous statements are false
+	
 	push r1
 	push r3
 
-	ldi r0, table
-	ldc r0, r0
-	
-	ldi r3, 8
+	ldi r0, table # tableAddr -> r0
+	ldi r3, 9
 
 	while 
 		dec r3
 	stays nz
-		ldi r2, 0x00
-		ld  r1, r0
-
-		shl r1
-		shl r1
-		shl r1
-		shl r1
-
-		or  r1, r2   # Bits 4-5 of r2 is the 1st cell's symbol ID
-
+	    ldc r0, r2
 		inc r0
-		ld  r1, r0
-
-		shl  r1
-		shl  r1
-
-		or  r1, r2   # Bits 2-3 of r2 is the 2nd cell's symbol ID
-
-		inc r0
-		ld  r1, r0
-
-		or  r1, r2   # Bits 0-1 of r2 is the 3rd cell's symbol ID
-
-		inc r0
-
-		# Win, if there are three crosses in a row
-		# Lose, if there are three noughts in a row
-		# Draw, when all the cells are busy
-		# ...and two previous statements are false
-
+		
+		ld  r2, r2
+		# r2 stores 1st row content
+		
 		if
-			ldi r1, crossWins
-			ldc r1, r1
+			tst r2
+		is  z
+			inc r0
+			inc r0
+			continue
+		fi 
+		# If 1st is empty, then we can skip other cells
+		
+		if
+			ldc r0, r1
+			inc r0
+			
+			ld  r1, r1
 			cmp r1, r2
-		is eq
-			ldi r2, win
-			ldc r2, r2
-			break
-		else
-			if
-				ldi r1, noughtWins
-				ldc r1, r1
-				cmp r1, r2
-			is eq
-				ldi r2, lose
-				ldc r2, r2
-				break
-			else
-				ldi r2, game
-				ldc r2, r2
-			fi
-		fi
+		is  ne
+			clr r2
+			inc r0
+			continue
+		fi 
+		# Checking 2nd cell for eq
+		
+		if
+			ldc r0, r1
+			inc r0
+			
+			ld  r1, r1
+			cmp r1, r2
+		is  ne
+			clr r2
+			continue
+		fi 
+
+		# Checking 3rd cell for eq
+
+		# If all cells are eq and not empty,
+		# ...finish the cycle
+
+		rol r2
+	
+		break
 	wend
 
 	pop r3
 	pop r1
-	pop r0
 
 	rts
-	# Game state is stored in r2
 	
 	
 changeIO:
@@ -172,15 +165,18 @@ changeIO:
 
 	# Symbol ID is stored in bits 0-1 of IO data
 	# Ours is in r1
+	tst r3
 
 	shl  r3
 	shl  r3
 
 	or   r1, r3
-	or   r2, r3
-
+	#or   r2, r3
 	# Now r3 contains updated IO data
+	
+	ldi  r0, IOReg
 	st   r0, r3
+	
 	rts
 	
 
@@ -192,8 +188,43 @@ humanPlays:
 	  
 	st   r3, r1        # cellData := symbol
 
-	#jsr  getGameState  # r2 := gameState
+	jsr  getGameState  # r2 := gameState
 	jsr  changeIO
 
 	rts
+	
+geniusAI:
+	ldi r0, table # tableAddr -> r0
+	ldi r2, 10
+
+	while 
+		dec r2
+	stays nz
+		ldc r0, r3
+		ld  r3, r1
+		
+		if 
+			tst r1
+		is	z
+			break
+		fi
+		
+		inc r0
+	wend
+	
+	rts
+	
+robotPlays:
+	jsr geniusAI # free cell addr -> r3
+	
+	ldi  r1, nought
+	ldc  r1, r1
+	
+	st   r3, r1        # cellData := symbol
+
+	jsr  getGameState  # r2 := gameState
+	jsr  changeIO
+	
+	rts
+	
 end
