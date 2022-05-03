@@ -1,4 +1,4 @@
-		asect	0xf3
+	asect	0xf3
 IOReg:	# Gives the address 0xf3 the symbolic name IOReg
 		asect	0xf0
 stack:	# Gives the address 0xe0 the symbolic name stack
@@ -144,12 +144,33 @@ getGameState:
 
 		# If all cells are eq and not empty,
 		# ...finish the cycle
-
-		rol r2
 	
 		break
 	wend
-
+	
+	#Checking state is not win or lose 
+	if 
+		tst r2
+	is z
+		#Checking is state draw 
+		ldi r3, 10
+		ldi r0, table
+		ldi r2, 3
+		while 
+			dec r3
+		stays nz
+			ldc r0, r1
+			inc r0
+			ld r1, r1
+			if 
+				tst r1
+			is z
+				clr r2
+				break
+			fi	
+		wend
+	fi
+	
 	pop r3
 	pop r1
 
@@ -169,14 +190,22 @@ changeIO:
 
 	shl  r3
 	shl  r3
+	
+	shl  r2
+	shl  r2	
+	shl  r2
+	shl  r2		
+	shl  r2
+	shl  r2		
 
 	or   r1, r3
-	#or   r2, r3
+	or   r2, r3	
 	# Now r3 contains updated IO data
 	
 	ldi  r0, IOReg
 	st   r0, r3
-	
+	ldi r0, 0x0c
+	st r0, r2
 	rts
 	
 
