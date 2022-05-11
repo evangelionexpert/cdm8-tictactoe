@@ -5,7 +5,7 @@ IOExt:  # IO address for extensions is 0xf2
 		asect	0xf0
 stack:	# Address we'll store to stack pointer is 0xf0
 		asect   0xe0
-celCnt: # And amount of busy cells will be stored in address 0xe0
+celCnt: # Amount of busy cells will be stored in address 0xe0
         # It's an optimization for game state checker
 
 
@@ -26,7 +26,7 @@ defendingTable:  dc 5         # Center cell (minus 4 variants max)
 				 dc 1,9,6,4   # All others (minus 2 variants max)
 
 # Game states:
-game: dc 0b00000000
+keep: dc 0b00000000
 win:  dc 0b01000000
 lose: dc 0b10000000
 draw: dc 0b11000000
@@ -129,15 +129,6 @@ incCells:
 	rts
 
 
-storeExt:
-	# r1 contains constant
-
-	ldi r2, IOExt
-	ldc r1, r1
-	st  r2, r1
-	rts
- 
-
 readIO:
 	do
 		ldi r0, IOReg
@@ -236,9 +227,9 @@ getGameState:
 		ldi r2, 3             # Then the state is "draw"
 	fi
 
-	ldi  r1, game
-	add  r1, r2
-	ldc  r2, r2 
+	ldi  r1, keep             
+	add  r1, r2               # Converting r2 to 
+	ldc  r2, r2 			  # one of predefined constants
 	
 	pop r3
 	pop r1
@@ -257,18 +248,27 @@ storeIO:
 	# Symbol ID is stored in bits 0-1 of IO data
 	# Ours is in r1
 
-	tst  r3
+	tst r3
 
-	shl  r3
-	shl  r3
+	shl r3
+	shl r3
 	
-	or   r1, r3
-	or   r2, r3	
+	or  r1, r3
+	or  r2, r3	
 
 	# Now r3 contains updated IO data
-	ldi  r0, IOReg
-	st   r0, r3
+	ldi r0, IOReg
+	st  r0, r3
 
+	rts
+
+
+storeExt:
+	# r1 contains constant
+
+	ldi r2, IOExt
+	ldc r1, r1
+	st  r2, r1
 	rts
 
 
@@ -276,13 +276,13 @@ humanPlays:
 	jsr incCells
 	# Cell address is stored in r3
 
-	ldi  r1, cross
-	ldc  r1, r1
+	ldi r1, cross
+	ldc r1, r1
 	  
-	st   r3, r1        # *cell := symbol
+	st  r3, r1        # *cell := symbol
 
-	jsr  getGameState  # r2 := gameState
-	jsr  storeIO
+	jsr getGameState  # r2 := gameState
+	jsr storeIO
 
 	rts
 	
@@ -290,6 +290,8 @@ humanPlays:
 geniusAI:
 	ldi r0, defendingTable
 	ldi r2, 10
+
+	# First of all we try to take center 
 
 	while 
 		dec r2
@@ -305,6 +307,8 @@ geniusAI:
 		
 		inc r0
 	wend
+
+	# We store chosen cell in r3
 	
 	rts
 	
