@@ -1,5 +1,5 @@
 		asect	0xf3
-IOReg:	# Main IO address is 0xf3
+IOAdr:	# Main IO address is 0xf3
 		asect   0xf2
 IOExt:  # IO address for extensions is 0xf2
 		asect	0xf0
@@ -20,10 +20,9 @@ table:  dc 0,1,2     # Horizontal lines
 		dc 8,5,2
 # Table contents will be stored in bytes 0-10 of RAM
 
-
-defendingTable:  dc 5         # Center cell (minus 4 variants max)
-                 dc 0,2,10,8  # Cells at edges (minus 3 variants max)
-				 dc 1,9,6,4   # All others (minus 2 variants max)
+defendingTable:  dc 5         # Center cell
+                 dc 0,2,10,8  # Cells at corners
+				 dc 1,9,6,4   # All others
 
 # Game states:
 keep: dc 0b00000000
@@ -31,17 +30,13 @@ win:  dc 0b01000000
 lose: dc 0b10000000
 draw: dc 0b11000000
 
-
 # Symbols:
-space:  dc 0
 cross:  dc 1
 nought: dc 2
-
 
 # Turns:
 correctTurn:   dc 1
 incorrectTurn: dc 2
-
 
 init:	
 	ldi	 r0, stack
@@ -57,8 +52,8 @@ mainLoop:
 		ldi r1, incorrectTurn
 		jsr storeExt    # Write that turn is not correct
 
-		br  mainLoop    # Go to the beginning of loop
-	else 
+		br  mainLoop    # Go to the beginning of main loop
+	else
 		ldi r1, correctTurn
 		jsr storeExt	# Write that turn is correct
 	fi
@@ -66,8 +61,8 @@ mainLoop:
 	
 	jsr humanPlays      # Put a cross 
 						# and check if human wins.
-						#    *cell   := cross
-						#       r2   := state
+						#     *cell   := cross
+						#        r2   := state
 
 	if
 		tst r2          # If game continues, ...
@@ -83,9 +78,6 @@ mainLoop:
 
 
 clean:
-	# We call this subroutine while waiting for input
-	# so we can mess up everything but not r3
-
 	push r3
 
 	ldi r3, 0
@@ -102,21 +94,20 @@ clean:
 		shl r2
 		shl r2
 		
-		ldi r3, IOReg
+		ldi r3, IOAdr
 		st  r3, r2
 		ldi r3, 0				 
 	wend
 	
-	clr r2
 	ldi r1, celCnt
-	st  r1, r2
+	st  r1, r3
 	
 	pop r3
 
 	rts	
 
 
-incCells:
+incCelCnt:
 	# Load global counter from dedicated address
 	ldi r1, celCnt
 	ld  r1, r2
@@ -131,7 +122,7 @@ incCells:
 
 readIO:
 	do
-		ldi r0, IOReg
+		ldi r0, IOAdr
 		ld	r0, r3     # Wait for button press
 		
 		if 
@@ -151,13 +142,24 @@ readIO:
 	rts	
 
 
-
 getGameState:
 	# Win, if there are three crosses in a row
 	# Lose, if there are three noughts in a row
 	# Draw, when all the cells are busy
 	# ...and two previous statements are false
+
+	if                        # Check for "draw" state
+		ldi r0, celCnt
+		ld  r0, r0
+
+		ldi r2, 5
+		cmp r0, r2			  # If global counter is less than 5
+	is  lt                   
+		clr r2                # Then we keep playing
+		rts
+	fi
 	
+
 	push r1
 	push r3
 
@@ -237,7 +239,6 @@ getGameState:
 	rts
 
 
-	
 storeIO:
 	# Cell address should be stored in bits 2-5 of IO data
 	# Ours is in bits 0-3 of r3
@@ -257,7 +258,7 @@ storeIO:
 	or  r2, r3	
 
 	# Now r3 contains updated IO data
-	ldi r0, IOReg
+	ldi r0, IOAdr
 	st  r0, r3
 
 	rts
@@ -269,11 +270,12 @@ storeExt:
 	ldi r2, IOExt
 	ldc r1, r1
 	st  r2, r1
+	
 	rts
 
 
 humanPlays:
-	jsr incCells
+	jsr incCelCnt
 	# Cell address is stored in r3
 
 	ldi r1, cross
@@ -291,8 +293,6 @@ geniusAI:
 	ldi r0, defendingTable
 	ldi r2, 10
 
-	# First of all we try to take center 
-
 	while 
 		dec r2
 	stays nz
@@ -308,13 +308,13 @@ geniusAI:
 		inc r0
 	wend
 
-	# We store chosen cell in r3
+	# We store address of chosen cell in r3
 	
 	rts
 	
 	
 robotPlays:
-	jsr incCells
+	jsr incCelCnt
 	jsr geniusAI 	  # free cell -> r3
 	
 	ldi r1, nought
