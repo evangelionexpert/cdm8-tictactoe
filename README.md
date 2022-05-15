@@ -8,7 +8,7 @@ What's done:
  - "Correct turn" extension
 
 We used:
- - CdM-8 mark5 (reduced core)
+ - CdM-8 mark5
  - Logisim v2.7.1
  - CocoIDE v1.91
 
